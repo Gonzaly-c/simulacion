@@ -1,6 +1,6 @@
-# simulacion
+# Simulacion
 Materia de cuarto anio de ingenieria en sistemas
-#Integrantes
+# Integrantes
 - Gonzalo Constante
 - Santiago Ferrero
 - Francisco Marcelo Gil

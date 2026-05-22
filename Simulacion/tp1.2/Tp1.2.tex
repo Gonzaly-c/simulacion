@@ -9,6 +9,7 @@
 \usepackage{url}            % simple URL typesetting
 \usepackage{booktabs}       % professional-quality tables
 \usepackage{amsfonts}       % blackboard math symbols
+\usepackage{amsmath}
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
 \usepackage{lipsum}
@@ -27,6 +28,7 @@
 \setlength{\intextsep}{8pt}
 \setlength{\abovecaptionskip}{4pt}
 \setlength{\belowcaptionskip}{4pt}
+
 \title{TP 1.2 - ESTUDIO ECONÓMICO-MATEMÁTICO DE APUESTAS EN LA RULETA}
 
 \author{
@@ -54,32 +56,535 @@ Zeballos 1341, S2000, Argentina
 }
 
 \begin{document}
-\maketitle
-\begin{abstract}
 
+\maketitle
+
+\begin{abstract}
+El presente trabajo práctico tiene como finalidad profundizar el análisis computacional de la ruleta europea desde la perspectiva económica del apostador. A diferencia del estudio puramente estadístico de las tiradas, en esta instancia se incorpora el flujo de caja del jugador, el efecto de distintos tipos de apuestas y la evaluación comparativa de estrategias progresivas de inversión bajo condiciones de capital finito e infinito.
+
+El modelo desarrollado simula una ruleta europea compuesta por 37 resultados posibles, numerados del 0 al 36, todos ellos considerados equiprobables. Sobre dicho sistema se analizan apuestas a pleno, color y tercio, junto con cuatro estrategias de juego: Martingala, D'Alembert, Fibonacci y Progresión Plana. Para cada una de ellas se estudia la evolución del capital del jugador, la sensibilidad ante rachas de pérdidas, el impacto de los pagos asociados a cada tipo de apuesta y la aparición de eventos de bancarrota cuando el capital disponible es acotado.
+
+La implementación fue realizada en Python 3.x utilizando módulos orientados a la generación pseudoaleatoria, procesamiento numérico, parametrización por consola y visualización gráfica. En particular, se emplearon \texttt{random} para simular las tiradas de la ruleta, \texttt{numpy} para el tratamiento de datos, \texttt{matplotlib} para la construcción de gráficos y \texttt{argparse} para configurar la cantidad de corridas, número de tiradas, estrategia seleccionada y régimen de capital.
+
+A partir de los resultados obtenidos, se busca contrastar el comportamiento empírico de las estrategias con el fundamento probabilístico del juego. El análisis permite evidenciar que, aunque ciertas estrategias pueden generar recuperaciones parciales o ganancias transitorias, ninguna modifica la esperanza matemática desfavorable impuesta por la presencia del cero en la ruleta europea. Asimismo, se observa que el supuesto de capital infinito constituye una idealización matemática no alcanzable en la práctica, mientras que el capital finito introduce restricciones económicas decisivas que incrementan el riesgo de ruina ante secuencias adversas.
 \end{abstract}
 
-\keywords{asd\and asd}
+\keywords{Simulación \and Ruleta \and Python \and Probabilidad \and Estrategias de apuesta \and Martingala \and D'Alembert \and Fibonacci \and Progresión Plana \and Capital finito}
 
 \newpage
 
 \section{Introducción}
 
+El estudio matemático de los juegos de azar constituye un campo de interés tanto para la probabilidad aplicada como para la simulación computacional. La ruleta, en particular, representa un sistema aleatorio discreto de fácil modelado, pero con implicancias económicas significativas cuando se analiza desde el punto de vista del apostador. Cada giro del plato genera un resultado independiente de los anteriores, lo que permite estudiar no solo la frecuencia de aparición de eventos, sino también el comportamiento acumulado del capital cuando se aplican estrategias de apuesta.
+
+Desde una perspectiva ingenieril, el problema no debe abordarse desde la intuición subjetiva del jugador, sino mediante modelos formales, simulación y análisis estadístico. En los juegos de azar es frecuente observar la denominada falacia del apostador, según la cual una persona puede creer que, luego de una serie de resultados desfavorables, aumenta la probabilidad de ocurrencia de un resultado favorable. Sin embargo, en una ruleta ideal cada tirada es independiente, por lo que la probabilidad de obtener un determinado resultado no depende de los resultados previos.
+
+En este contexto, las estrategias de apuesta progresiva suelen presentarse como mecanismos capaces de recuperar pérdidas mediante incrementos sistemáticos de la apuesta. Entre las más conocidas se encuentran la Martingala, D'Alembert y Fibonacci. En este trabajo se incorpora una cuarta estrategia denominada Progresión Plana, definida por el grupo como una progresión lineal simple que aumenta una unidad ante cada pérdida y retorna a la apuesta base luego de una ganancia.
+
+El objetivo principal es evaluar, mediante simulación computacional, si dichas estrategias permiten obtener beneficios sostenidos en el tiempo o si, por el contrario, se encuentran limitadas por la estructura probabilística del juego. Para ello se consideran dos escenarios mutuamente excluyentes: capital infinito, entendido como una idealización matemática sin restricciones de caja, y capital finito, que representa la situación económica real del jugador y permite analizar el riesgo de bancarrota.
+
+A través de múltiples corridas independientes y gráficos comparativos, se busca desmitificar la existencia de estrategias ganadoras a largo plazo en la ruleta europea. El análisis se fundamenta en la esperanza matemática negativa del juego, en la independencia de las tiradas y en la influencia de las rachas de pérdidas sobre el flujo de caja del apostador.
+
 \newpage
 
 \section{Materiales y Métodos}
 
+\subsection{Modelo matemático de la ruleta europea}
+
+La ruleta europea se compone de 37 posibles resultados, numerados desde el 0 hasta el 36. En un modelo ideal, cada número posee la misma probabilidad de aparición. Si se define la variable aleatoria $X$ como el número obtenido en una tirada, entonces:
+
+\begin{equation}
+    X \sim U(0,36)
+\end{equation}
+
+y la probabilidad de ocurrencia de cualquier número particular es:
+
+\begin{equation}
+    P(X=x)=\frac{1}{37}, \quad x \in \{0,1,2,\dots,36\}.
+\end{equation}
+
+En este trabajo se consideran tres tipos de apuestas: pleno, color y tercio.
+
+\subsubsection{Apuesta a pleno}
+
+La apuesta a pleno consiste en seleccionar un único número. En el programa implementado, el pleno se evalúa sobre un número particular, tomado como referencia del experimento. La probabilidad de éxito es:
+
+\begin{equation}
+    P(\text{pleno})=\frac{1}{37}.
+\end{equation}
+
+El pago neto utilizado por el simulador es de 35 unidades por cada unidad apostada. Por lo tanto, si la apuesta realizada es $b$, la ganancia neta en caso de acierto es:
+
+\begin{equation}
+    Ganancia_{\text{pleno}} = 35b.
+\end{equation}
+
+En caso de pérdida, el jugador pierde el monto apostado:
+
+\begin{equation}
+    Perdida_{\text{pleno}} = -b.
+\end{equation}
+
+\subsubsection{Apuesta a color}
+
+La apuesta a color consiste en seleccionar uno de los dos colores principales de la ruleta, rojo o negro. En la ruleta europea existen 18 números rojos, 18 números negros y un número verde, correspondiente al cero. Para el color rojo, la probabilidad de éxito es:
+
+\begin{equation}
+    P(\text{rojo})=\frac{18}{37}.
+\end{equation}
+
+El pago neto asociado es 1 a 1, por lo que para una apuesta $b$:
+
+\begin{equation}
+    Ganancia_{\text{color}} = b.
+\end{equation}
+
+La existencia del cero introduce la ventaja de la casa, ya que el evento complementario del rojo no se limita únicamente al negro, sino que incluye también al verde.
+
+\subsubsection{Apuesta a tercio}
+
+En el modelo implementado se divide el conjunto de números del 1 al 36 en tres tercios de 12 números cada uno. El cero no pertenece a ningún tercio. Por lo tanto, la probabilidad de acertar un tercio específico es:
+
+\begin{equation}
+    P(\text{tercio})=\frac{12}{37}.
+\end{equation}
+
+El pago neto utilizado es de 2 unidades por cada unidad apostada:
+
+\begin{equation}
+    Ganancia_{\text{tercio}} = 2b.
+\end{equation}
+
+\subsection{Esperanza matemática de las apuestas}
+
+Para cada tipo de apuesta, la esperanza matemática puede expresarse como:
+
+\begin{equation}
+    E = P(\text{ganar}) \cdot Ganancia + P(\text{perder}) \cdot Perdida.
+\end{equation}
+
+En la apuesta a color:
+
+\begin{equation}
+    E_{\text{color}}=\frac{18}{37}(b)+\frac{19}{37}(-b)
+    =-\frac{1}{37}b.
+\end{equation}
+
+En la apuesta a tercio:
+
+\begin{equation}
+    E_{\text{tercio}}=\frac{12}{37}(2b)+\frac{25}{37}(-b)
+    =-\frac{1}{37}b.
+\end{equation}
+
+En la apuesta a pleno:
+
+\begin{equation}
+    E_{\text{pleno}}=\frac{1}{37}(35b)+\frac{36}{37}(-b)
+    =-\frac{1}{37}b.
+\end{equation}
+
+Estos resultados muestran que, independientemente del tipo de apuesta considerado, la esperanza matemática neta es negativa para el jugador. Las estrategias de progresión modifican el tamaño de las apuestas, pero no alteran las probabilidades estructurales del juego.
+
+\subsection{Estrategias de apuesta implementadas}
+
+El simulador evalúa cuatro estrategias: Martingala, D'Alembert, Fibonacci y Progresión Plana. En todos los casos se define una apuesta base $b_0$, que en el código corresponde a:
+
+\begin{equation}
+    b_0 = 1.
+\end{equation}
+
+Asimismo, el capital inicial del jugador se define como:
+
+\begin{equation}
+    C_0 = 500.
+\end{equation}
+
+El capital evoluciona tirada a tirada según:
+
+\begin{equation}
+    C_{t+1} =
+    \begin{cases}
+    C_t + m b_t, & \text{si la apuesta resulta ganadora},\\
+    C_t - b_t, & \text{si la apuesta resulta perdedora},
+    \end{cases}
+\end{equation}
+
+donde $b_t$ es el monto apostado en la tirada $t$ y $m$ es el multiplicador de pago neto correspondiente al tipo de apuesta.
+
+\subsubsection{Martingala}
+
+La estrategia Martingala consiste en duplicar la apuesta luego de cada pérdida y volver a la apuesta base luego de una ganancia. Formalmente:
+
+\begin{equation}
+    b_{t+1} =
+    \begin{cases}
+    b_0, & \text{si gana en } t,\\
+    2b_t, & \text{si pierde en } t.
+    \end{cases}
+\end{equation}
+
+Esta estrategia busca recuperar todas las pérdidas acumuladas cuando finalmente ocurre una ganancia. Sin embargo, su principal debilidad es el crecimiento exponencial del monto apostado durante rachas negativas. En escenarios de capital finito, esta característica incrementa significativamente el riesgo de bancarrota.
+
+\subsubsection{D'Alembert}
+
+La estrategia D'Alembert utiliza una progresión aritmética más moderada. Ante una pérdida, la apuesta aumenta en una unidad base; ante una ganancia, disminuye en una unidad base, sin caer por debajo de la apuesta mínima:
+
+\begin{equation}
+    b_{t+1} =
+    \begin{cases}
+    \max(b_0, b_t-b_0), & \text{si gana en } t,\\
+    b_t+b_0, & \text{si pierde en } t.
+    \end{cases}
+\end{equation}
+
+A diferencia de la Martingala, el crecimiento de las apuestas es lineal. Esto reduce la exposición ante rachas adversas, aunque también disminuye la capacidad de recuperación rápida de pérdidas acumuladas.
+
+\subsubsection{Fibonacci}
+
+La estrategia Fibonacci se basa en la sucesión:
+
+\begin{equation}
+    F_0=1,\quad F_1=1,\quad F_k=F_{k-1}+F_{k-2}.
+\end{equation}
+
+El monto apostado se calcula como:
+
+\begin{equation}
+    b_t=F_k b_0.
+\end{equation}
+
+Cuando el jugador pierde, avanza una posición en la sucesión; cuando gana, retrocede dos posiciones, sin superar el límite inferior de la secuencia:
+
+\begin{equation}
+    k_{t+1} =
+    \begin{cases}
+    \max(0,k_t-2), & \text{si gana en } t,\\
+    k_t+1, & \text{si pierde en } t.
+    \end{cases}
+\end{equation}
+
+Esta estrategia presenta un crecimiento más lento que la Martingala, pero más agresivo que una progresión estrictamente lineal en etapas prolongadas de pérdida.
+
+\subsubsection{Progresión Plana}
+
+La cuarta estrategia, se denomina en este informe como Progresión Plana. Su regla consiste en aumentar la apuesta en una unidad fija ante cada pérdida y regresar a la apuesta base luego de una ganancia:
+
+\begin{equation}
+    b_{t+1} =
+    \begin{cases}
+    b_0, & \text{si gana en } t,\\
+    b_t+1, & \text{si pierde en } t.
+    \end{cases}
+\end{equation}
+
+Dado que en el programa la apuesta base es igual a una unidad, esta estrategia se comporta como una progresión lineal simple. Su principal ventaja es que evita incrementos abruptos del capital apostado, reduciendo la volatilidad del flujo de caja. No obstante, al igual que las demás estrategias, no modifica la esperanza matemática negativa de la ruleta.
+
+\subsection{Capital infinito y capital finito}
+
+El trabajo considera dos supuestos de análisis.
+
+\subsubsection{Capital infinito}
+
+El capital infinito representa una idealización matemática en la cual el jugador siempre puede cubrir la apuesta requerida por la estrategia, sin importar la magnitud alcanzada. Este escenario permite estudiar el comportamiento teórico de las progresiones sin restricciones de caja.
+
+En términos computacionales, no se limita la apuesta por el capital disponible. Esto permite observar trayectorias que, aunque posibles en el modelo matemático, pueden resultar inviables en condiciones económicas reales.
+
+\subsubsection{Capital finito}
+
+El capital finito representa la situación real del apostador. En este caso, el jugador dispone de un capital inicial limitado. Si la apuesta calculada por la estrategia supera la caja disponible, el programa ajusta la apuesta al monto restante:
+
+\begin{equation}
+    b_t = \min(b_t, C_t).
+\end{equation}
+
+Cuando el capital llega a cero, se considera que el jugador entra en bancarrota. Este supuesto permite analizar el impacto económico de las rachas de pérdidas y la vulnerabilidad de cada estrategia ante restricciones reales de capital.
+
+\subsection{Implementación computacional}
+
+La simulación fue desarrollada en Python 3.x. El programa utiliza una estructura modular basada en funciones específicas para crear la ruleta, generar tiradas aleatorias, verificar ganancias, calcular pagos, evaluar estrategias y graficar resultados.
+
+Los módulos utilizados son:
+
+\begin{itemize}
+    \item \textbf{\texttt{argparse}:} permite recibir parámetros por consola, tales como cantidad de corridas, número de tiradas, número elegido, estrategia y tipo de capital.
+    \item \textbf{\texttt{random}:} se utiliza para generar números enteros pseudoaleatorios entre 0 y 36, simulando cada tirada de la ruleta.
+    \item \textbf{\texttt{numpy}:} permite organizar datos en arreglos y calcular promedios entre corridas.
+    \item \textbf{\texttt{matplotlib}:} se utiliza para representar gráficamente frecuencias relativas, histogramas y evolución del capital.
+    \item \textbf{\texttt{sys}:} permite controlar la finalización del programa ante errores en el ingreso de argumentos.
+\end{itemize}
+
+La ejecución general del programa responde al siguiente esquema:
+
+\begin{verbatim}
+python programa.py -c <corridas> -n <tiradas> -e <numero> -s <estrategia> -a <capital>
+\end{verbatim}
+
+donde:
+
+\begin{itemize}
+    \item \texttt{-c}: cantidad de corridas independientes.
+    \item \texttt{-n}: cantidad de tiradas por corrida.
+    \item \texttt{-e}: número elegido, utilizado cuando corresponde analizar pleno.
+    \item \texttt{-s}: estrategia seleccionada: \texttt{m} para Martingala, \texttt{d} para D'Alembert, \texttt{f} para Fibonacci y \texttt{o} para Progresión Plana.
+    \item \texttt{-a}: tipo de capital: \texttt{f} para capital finito e \texttt{i} para capital infinito.
+\end{itemize}
 
 \newpage
 
 \section{Resultados}
 
+En esta sección se presentan los resultados gráficos obtenidos mediante la simulación. Se analizan primero las frecuencias relativas e histogramas correspondientes a los tipos de apuesta considerados: color, tercio y pleno. Posteriormente, se estudia la evolución del capital para cada estrategia bajo los supuestos de capital finito e infinito.
+
+\subsection{Frecuencias relativas e histogramas}
+
+\subsubsection{Apuesta a color}
+
+La apuesta a color posee una probabilidad teórica de éxito igual a $18/37$. En el caso analizado, el programa toma como referencia el color rojo.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{frecuencia_relativa_color.png}
+    \caption{Frecuencia relativa de la apuesta a color.}
+    \label{fig:frecuencia-relativa-color}
+\end{figure}
+
+En la Figura \ref{fig:frecuencia-relativa-color} se observa la evolución de la frecuencia relativa asociada al color seleccionado. Las primeras tiradas presentan oscilaciones pronunciadas debido al bajo tamaño muestral inicial. A medida que aumenta la cantidad de tiradas, se espera que la curva tienda al valor teórico $18/37$ ($0,\overline{486}$)
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{histograma_color.png}
+    \caption{Histograma de frecuencias observadas, esperadas y error absoluto para color.}
+    \label{fig:histograma-color}
+\end{figure}
+
+La Figura \ref{fig:histograma-color} permite comparar la distribución experimental de los colores con sus probabilidades esperadas. El cero, representado como color verde, introduce la asimetría estructural que otorga ventaja a la casa.
+
+\subsubsection{Apuesta a tercio}
+
+La apuesta a tercio divide los números del 1 al 36 en tres grupos de 12 valores cada uno. La probabilidad teórica de acertar un tercio específico es $12/37$ ($0,\overline{324}$).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{frecuencia_relativa_tercio.png}
+    \caption{Frecuencia relativa de la apuesta a tercio.}
+    \label{fig:frecuencia-relativa-tercio}
+\end{figure}
+
+En la Figura \ref{fig:frecuencia-relativa-tercio} se presenta la evolución de la frecuencia relativa correspondiente al tercio seleccionado. La curva debería aproximarse progresivamente al valor esperado $12/37$, aunque con variabilidad inicial asociada al carácter aleatorio del experimento.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{histograma_tercio.png}
+    \caption{Histograma de frecuencias observadas, esperadas y error absoluto para tercios.}
+    \label{fig:histograma-tercio}
+\end{figure}
+
+La Figura \ref{fig:histograma-tercio} muestra la comparación entre las frecuencias observadas y esperadas para los tres tercios y el número cero. Se espera que los tres tercios presenten valores cercanos entre sí, mientras que el cero mantenga una frecuencia aproximada de $1/37$ ($0,\overline{027}$).
+
+\subsubsection{Apuesta a pleno}
+
+La apuesta a pleno corresponde a la selección de un único número de la ruleta. Su probabilidad de éxito es la menor entre las apuestas analizadas:
+
+\begin{equation}
+    P(\text{pleno})=\frac{1}{37}.
+\end{equation}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{frecuencia_relativa_pleno.png}
+    \caption{Frecuencia relativa de la apuesta a pleno.}
+    \label{fig:frecuencia-relativa-pleno}
+\end{figure}
+
+En la Figura \ref{fig:frecuencia-relativa-pleno} se observa el comportamiento de la frecuencia relativa del número seleccionado. Debido a la baja probabilidad de ocurrencia, las fluctuaciones relativas pueden ser más visibles que en color o tercio, especialmente al comienzo de la simulación.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{histograma_pleno.png}
+    \caption{Histograma de frecuencias observadas, esperadas y error absoluto para pleno.}
+    \label{fig:histograma-pleno}
+\end{figure}
+
+La Figura \ref{fig:histograma-pleno} permite evaluar la distribución observada para los 37 números posibles. En una simulación suficientemente extensa, las barras deberían tender a una altura similar, cercana a $1/37$.
+
+\newpage
+
+\subsection{Estrategia Martingala}
+
+La Martingala es la estrategia más agresiva de las analizadas, dado que duplica la apuesta luego de cada pérdida. Esto genera una rápida recuperación ante una ganancia posterior, pero también un crecimiento exponencial de la economia del apostador.
+
+\subsubsection{Martingala con capital finito}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{martingala_finito.png}
+    \caption{Evolución del capital aplicando Martingala con capital finito.}
+    \label{fig:martingala-finito}
+\end{figure}
+
+En la Figura \ref{fig:martingala-finito} se observa el comportamiento del flujo de caja bajo capital acotado. Las rachas de pérdidas producen incrementos abruptos en el monto requerido para continuar la estrategia, lo que puede llevar rápidamente a la bancarrota.
+
+\subsubsection{Martingala con capital infinito}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{martingala_infinito.png}
+    \caption{Evolución del capital aplicando Martingala con capital infinito.}
+    \label{fig:martingala-infinito}
+\end{figure}
+
+La Figura \ref{fig:martingala-infinito} representa el caso ideal en el cual el jugador siempre puede cubrir la apuesta siguiente. En este escenario, la estrategia puede mostrar recuperaciones luego de pérdidas sucesivas, pero el supuesto de capital infinito elimina artificialmente la restricción económica más importante del problema. La escala de cada grafico se encuentra arriba a la izquierda ($1e^n$).
+
+\newpage
+
+\subsection{Estrategia D'Alembert}
+
+La estrategia D'Alembert utiliza una progresión lineal, aumentando la apuesta en una unidad base ante cada pérdida y disminuyéndola en una unidad base ante cada ganancia. Su comportamiento es menos agresivo que el de la Martingala.
+
+\subsubsection{D'Alembert con capital finito}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{dalembert_finito.png}
+    \caption{Evolución del capital aplicando D'Alembert con capital finito.}
+    \label{fig:dalembert-finito}
+\end{figure}
+
+En la Figura \ref{fig:dalembert-finito} se aprecia una evolución menos explosiva de las apuestas en comparación con la Martingala. La progresión lineal reduce el riesgo de una caída abrupta inmediata, aunque no elimina la posibilidad de agotamiento del capital.
+
+\subsubsection{D'Alembert con capital infinito}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{dalembert_infinito.png}
+    \caption{Evolución del capital aplicando D'Alembert con capital infinito.}
+    \label{fig:dalembert-infinito}
+\end{figure}
+
+La Figura \ref{fig:dalembert-infinito} muestra el comportamiento de la estrategia sin restricciones de caja. La curva promedio puede presentar una evolución más suave, debido a que el crecimiento de las apuestas es aritmético y no exponencial.
+
+\newpage
+
+\subsection{Estrategia Fibonacci}
+
+La estrategia Fibonacci incrementa la apuesta siguiendo una sucesión recursiva. Su agresividad se encuentra en un punto intermedio: crece más lentamente que la Martingala, pero puede alcanzar montos elevados ante secuencias prolongadas de pérdidas.
+
+\subsubsection{Fibonacci con capital finito}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{fibonacci_finito.png}
+    \caption{Evolución del capital aplicando Fibonacci con capital finito.}
+    \label{fig:fibonacci-finito}
+\end{figure}
+
+En la Figura \ref{fig:fibonacci-finito} se observa la evolución del capital bajo una progresión basada en la sucesión de Fibonacci. Si bien la estrategia atenúa el crecimiento inicial respecto de la Martingala, las pérdidas consecutivas pueden desplazar rápidamente al jugador hacia posiciones superiores de la sucesión.
+
+\subsubsection{Fibonacci con capital infinito}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{fibonacci_infinito.png}
+    \caption{Evolución del capital aplicando Fibonacci con capital infinito.}
+    \label{fig:fibonacci-infinito}
+\end{figure}
+
+La Figura \ref{fig:fibonacci-infinito} representa el desempeño de la estrategia Fibonacci sin limitaciones de capital. En este escenario, la estrategia puede sostener rachas adversas durante más tiempo, aunque ello se logra mediante apuestas progresivamente mayores. La escala de cada grafico se encuentra arriba a la izquierda ($1e^n$).
+
+\newpage
+
+\subsection{Estrategia Progresión Plana}
+
+La Progresión Plana aumenta la apuesta en una unidad fija ante cada pérdida y retorna a la apuesta base luego de una ganancia. Su comportamiento es lineal y conservador, lo que permite estudiar una estrategia menos agresiva frente a las progresiones clásicas.
+
+\subsubsection{Progresión Plana con capital finito}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{progresion_plana_finito.png}
+    \caption{Evolución del capital aplicando Progresión Plana con capital finito.}
+    \label{fig:progresion-plana-finito}
+\end{figure}
+
+La Figura \ref{fig:progresion-plana-finito} muestra una evolución del capital con menor volatilidad relativa. Al no duplicar ni avanzar por una sucesión de crecimiento acelerado, la estrategia reduce el tamaño de las apuestas durante rachas negativas. Sin embargo, la esperanza matemática continúa siendo desfavorable.
+
+\subsubsection{Progresión Plana con capital infinito}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{progresion_plana_infinito.png}
+    \caption{Evolución del capital aplicando Progresión Plana con capital infinito.}
+    \label{fig:progresion-plana-infinito}
+\end{figure}
+
+En la Figura \ref{fig:progresion-plana-infinito} se presenta el comportamiento de la Progresión Plana bajo capital ilimitado. La curva promedio tiende a ser más suave que la de estrategias agresivas, dado que los incrementos de apuesta son constantes y no exponenciales..
+
 \newpage
 
 \section{Discusión}
 
+Los resultados obtenidos permiten comparar críticamente el comportamiento de las estrategias de apuesta frente a la estructura probabilística de la ruleta europea. En primer lugar, los gráficos de frecuencia relativa e histogramas muestran que las probabilidades empíricas tienden a aproximarse a los valores teóricos esperados a medida que aumenta el número de tiradas. Este comportamiento confirma que el simulador reproduce adecuadamente la naturaleza aleatoria y equiprobable del plato de la ruleta.
+
+Desde el punto de vista económico, el elemento central del análisis es que todas las apuestas presentan esperanza matemática negativa para el jugador. La presencia del cero reduce la probabilidad efectiva de éxito respecto de un juego equitativo, generando una ventaja estructural para la casa. Por este motivo, ninguna progresión de apuestas puede modificar la probabilidad de ocurrencia de los eventos ni transformar un juego desfavorable en uno favorable a largo plazo.
+
+La comparación entre capital infinito y capital finito resulta especialmente relevante. Bajo capital infinito, algunas estrategias pueden mostrar curvas promedio aparentemente más estables o con recuperaciones luego de rachas adversas. Esto ocurre porque el modelo permite continuar apostando sin restricciones, incluso cuando las pérdidas acumuladas exigen montos cada vez mayores. Sin embargo, este supuesto no representa una condición económicamente realizable, sino una idealización útil para estudiar el límite teórico de las estrategias.
+
+En cambio, bajo capital finito aparece el fenómeno de la bancarrota. Cuando una racha de pérdidas exige una apuesta superior al capital disponible, el jugador queda obligado a reducir la apuesta al monto restante o directamente agota su caja. Este fenómeno es particularmente evidente en estrategias agresivas como la Martingala, donde el monto apostado crece exponencialmente. Aunque una ganancia posterior podría recuperar pérdidas previas en términos teóricos, en la práctica el jugador puede no disponer del capital necesario para alcanzar dicha instancia.
+
+La Martingala presenta el perfil de mayor agresividad. Su principal atractivo es la recuperación rápida luego de una ganancia, pero su debilidad es la enorme exposición ante secuencias negativas. Por ello, en el escenario de capital finito se espera que registre una proporción significativa de bancarrotas, especialmente cuando el número de tiradas o corridas aumenta.
+
+D'Alembert y Progresión Plana presentan un comportamiento más suave, ya que utilizan incrementos lineales. Estas estrategias reducen la volatilidad de las apuestas y permiten sostener más tiempo el juego con el mismo capital inicial. Sin embargo, su menor agresividad también implica que la recuperación de pérdidas sea más lenta. En consecuencia, aunque pueden disminuir la probabilidad de quiebra en comparación con la Martingala, no eliminan la desventaja matemática del juego.
+
+La estrategia Fibonacci ocupa una posición intermedia. Su crecimiento es más moderado que el de la Martingala en las primeras pérdidas, pero puede acelerarse considerablemente cuando la racha adversa se prolonga. Esto la convierte en una estrategia menos explosiva inicialmente, aunque igualmente vulnerable al agotamiento del capital.
+
+En síntesis, los resultados permiten sostener que las estrategias modifican la trayectoria temporal del capital, pero no la esperanza matemática del juego. Las diferencias observadas entre ellas se relacionan con el riesgo, la volatilidad, la velocidad de recuperación y la exposición ante pérdidas consecutivas. La ventaja de la casa permanece constante y se manifiesta con mayor claridad a medida que aumenta la cantidad de tiradas simuladas.
+
+\newpage
+
+\section{Conclusión}
+
+El presente trabajo permitió analizar la ruleta europea desde una perspectiva económico-matemática, incorporando no solo la generación aleatoria de resultados, sino también el flujo de caja del apostador bajo distintas estrategias de apuesta. La simulación computacional desarrollada en Python permitió evaluar de manera objetiva el comportamiento de Martingala, D'Alembert, Fibonacci y Progresión Plana, tanto con capital finito como con capital infinito.
+
+En primer lugar, el análisis de frecuencias relativas e histogramas permitió verificar que el modelo reproduce adecuadamente las probabilidades teóricas de la ruleta europea. Las apuestas a color, tercio y pleno muestran una tendencia hacia sus valores esperados conforme aumenta el número de tiradas, validando el funcionamiento estadístico del simulador.
+
+En segundo lugar, el análisis económico evidenció que las estrategias de progresión no modifican la esperanza matemática negativa del juego. Aunque pueden generar beneficios transitorios o recuperaciones parciales, todas se encuentran condicionadas por la ventaja estructural de la casa. La presencia del cero produce una pérdida esperada de $1/37$ unidades por cada unidad apostada, independientemente del tipo de apuesta seleccionada.
+
+El contraste entre capital infinito y capital finito mostró una diferencia fundamental. El capital infinito permite estudiar un escenario idealizado en el que el jugador siempre puede continuar apostando, pero este supuesto carece de viabilidad práctica. En el caso de capital finito, las rachas de pérdidas pueden provocar bancarrota, especialmente en estrategias de crecimiento agresivo como la Martingala.
+
+La Martingala resultó ser la estrategia de mayor riesgo debido a su crecimiento exponencial. Fibonacci presentó un riesgo intermedio, mientras que D'Alembert y Progresión Plana mostraron un comportamiento más gradual y menos volátil. Sin embargo, ninguna de ellas logró revertir la desventaja matemática del apostador frente a la ruleta europea.
+
+Como conclusión general, puede afirmarse que no existe una estrategia capaz de batir a la casa en el largo plazo dentro del modelo analizado. Las estrategias de apuesta alteran la distribución temporal de ganancias y pérdidas, pero no cambian las probabilidades fundamentales del juego. La simulación computacional se valida así como una herramienta objetiva y rigurosa para estudiar fenómenos aleatorios, evaluar hipótesis económicas y desmitificar creencias asociadas a los juegos de azar.
+
 \newpage
 
 \section{Referencias}
+
+\begin{enumerate}[label={[\arabic*]}, leftmargin=*]
+    \item Wikipedia. (2026). \textit{Ruleta}. 
+    \url{https://es.wikipedia.org/wiki/Ruleta}
+
+    \item Wikipedia. (2026). \textit{Probabilidad}. 
+    \url{https://es.wikipedia.org/wiki/Probabilidad}
+
+    \item Wikipedia. (2026). \textit{Estadística}. 
+    \url{https://es.wikipedia.org/wiki/Estad%C3%ADstica}
+
+    \item Wikipedia. (2026). \textit{Ley de los grandes números}. 
+    \url{https://es.wikipedia.org/wiki/Ley_de_los_grandes_números}
+
+    \item Sportium. (s. f.) \textit{Las cinco mejores estrategias para ruleta}. 
+    \url{https://blog.sportium.es/5-estrategias-ganar-ruleta/}
+
+    \item Sportium. (s. f.). \textit{Estrategias de ruleta: Martingala, D'Alembert y Fibonacci}. 
+    \url{https://blog.sportium.es/3-simples-estrategias-para-ganar-en-la-ruleta-que-cualquiera-puede-intentar/}
+
+    \item Wizard of Odds. (s. f.). \textit{Roulette}. 
+    \url{https://wizardofodds.com/games/roulette/}
+
+    \item Ethier, S. N. (2010). \textit{The Doctrine of Chances: Probabilistic Aspects of Gambling}. Springer.
+
+    \item Ross, S. M. (2014). \textit{Introduction to Probability Models}. Academic Press.
+\end{enumerate}
 
 \end{document}

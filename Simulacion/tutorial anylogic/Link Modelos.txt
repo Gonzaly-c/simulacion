@@ -1,3 +1,7 @@
 Link de la simulación de los modelos
 
 - [Job shop model](https://cloud.anylogic.com/model/e894f26d-8139-4113-aa32-a07648b2509e)
+
+- [Supply Chain GIS](https://cloud.anylogic.com/model/fd2f4a2d-73e5-4a10-945a-89a3d7604f98)
+
+- [SEIR Model](https://cloud.anylogic.com/model/7e7ff167-adc3-45d4-86eb-9d81c82aecef)
